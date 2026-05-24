@@ -89,8 +89,16 @@ Login page  ──click──▶  /orangehrm  ──redirect──▶  OrangeHRM
 1. In OrangeHRM, go to **Admin > Configuration > Register OAuth Client** and
    create a client with redirect URI `APP_URL` + `/orangehrm/callback`
    (e.g. `http://127.0.0.1:8000/orangehrm/callback`).
-2. Copy OrangeHRM's `oauth.token_encryption_key` (from the `hs_hr_config` table)
-   into `ORANGEHRM_TOKEN_ENCRYPTION_KEY`.
+2. Copy OrangeHRM's `oauth.token_encryption_key` into
+   `ORANGEHRM_TOKEN_ENCRYPTION_KEY`. Retrieve it from the OrangeHRM database with
+   this **read-only** query (replace the db name if yours differs):
+
+   ```sql
+   SELECT value FROM hs_hr_config WHERE name = 'oauth.token_encryption_key';
+   ```
+
+   > This is a `SELECT` only — no schema changes or writes to OrangeHRM are
+   > required for this integration.
 3. Configure the OrangeHRM settings in `.env` (see `.env.example` for the full
    list and inline notes):
 
