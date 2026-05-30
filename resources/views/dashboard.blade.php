@@ -26,6 +26,9 @@
 </div>
 @endif
 
+{{-- Procurement KPIs --}}
+@include('partials.procurement-summary')
+
 <div class="row">
 
     <!-- panel -->

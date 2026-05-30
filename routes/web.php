@@ -30,6 +30,10 @@ use App\Http\Controllers\StorageProxyController;
 use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\UploadedFilesController;
 use App\Http\Controllers\ViewAssetsController;
+use App\Http\Controllers\MaintenanceController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\PurchaseRequestController;
+use App\Http\Controllers\SupplierQuotationController;
 use App\Livewire\Importer;
 use App\Mail\CheckoutComponentMail;
 use App\Models\ReportTemplate;
@@ -683,6 +687,7 @@ Route::group(['middleware' => 'web'], function () {
     // OrangeHRM SSO
     Route::get('orangehrm', [App\Http\Controllers\OrangeHRMAuthController::class, 'redirect'])->name('orangehrm.redirect');
     Route::get('orangehrm/callback', [App\Http\Controllers\OrangeHRMAuthController::class, 'callback'])->name('orangehrm.callback');
+    Route::post('orangehrm/logout', [App\Http\Controllers\OrangeHRMAuthController::class, 'logout'])->name('orangehrm.logout');
 
     // need to keep GET /logout for SAML SLO
     Route::get(
@@ -725,6 +730,109 @@ Route::group(['middleware' => 'web'], function () {
         ]
     )->name('ui.files.destroy')
         ->where(['object_type' => 'assets|maintenances|hardware|models|users|locations|accessories|consumables|licenses|suppliers|components|companies|departments']);
+});
+
+// Custom Procurement & Asset Flow Routes
+Route::group(['middleware' => ['auth'], 'prefix' => 'procurement'], function () {
+
+    /*
+    |------------------------------------------------------------------
+    | Purchase Requests
+    |------------------------------------------------------------------
+    */
+    Route::get('purchase-requests', [PurchaseRequestController::class, 'index'])
+        ->name('purchase-requests.index');
+
+    Route::get('purchase-requests/create', [PurchaseRequestController::class, 'create'])
+        ->name('purchase-requests.create');
+
+    Route::post('purchase-requests', [PurchaseRequestController::class, 'store'])
+        ->name('purchase-requests.store');
+
+    Route::get('purchase-requests/{pr}', [PurchaseRequestController::class, 'show'])
+        ->name('purchase-requests.show');
+
+    Route::patch('purchase-requests/{pr}/approve', [PurchaseRequestController::class, 'approve'])
+        ->name('purchase-requests.approve');
+
+    Route::patch('purchase-requests/{pr}/reject', [PurchaseRequestController::class, 'reject'])
+        ->name('purchase-requests.reject');
+
+    /*
+    |------------------------------------------------------------------
+    | Purchase Orders
+    |------------------------------------------------------------------
+    */
+    Route::post('purchase-requests/{pr}/purchase-orders', [PurchaseOrderController::class, 'store'])
+        ->name('purchase-orders.store');
+
+    Route::get('purchase-orders/{po}', [PurchaseOrderController::class, 'show'])
+        ->name('purchase-orders.show');
+
+    Route::get('purchase-orders/{po}/receive', [PurchaseOrderController::class, 'receiveForm'])
+        ->name('purchase-orders.receive');
+
+    Route::patch('purchase-orders/{po}/receive', [PurchaseOrderController::class, 'markReceived'])
+        ->name('purchase-orders.mark-received');
+
+    Route::get('purchase-orders/{po}/asset/create', [PurchaseOrderController::class, 'createAssetForm'])
+        ->name('purchase-orders.asset.create');
+
+    Route::post('purchase-orders/{po}/asset', [PurchaseOrderController::class, 'storeAsset'])
+        ->name('purchase-orders.asset.store');
+
+    Route::patch('purchase-orders/{po}/close', [PurchaseOrderController::class, 'close'])
+        ->name('purchase-orders.close');
+
+    /*
+    |------------------------------------------------------------------
+    | Supplier Quotations
+    |------------------------------------------------------------------
+    */
+    Route::get('purchase-orders/{po}/quotations/create', [SupplierQuotationController::class, 'create'])
+        ->name('quotations.create');
+
+    Route::post('purchase-orders/{po}/quotations', [SupplierQuotationController::class, 'store'])
+        ->name('quotations.store');
+
+    Route::patch('quotations/{quotation}/award', [SupplierQuotationController::class, 'award'])
+        ->name('quotations.award');
+
+    Route::get('purchase-orders/{po}/scoring', [SupplierQuotationController::class, 'scoring'])
+        ->name('quotations.scoring');
+
+    /*
+    |------------------------------------------------------------------
+    | Maintenance Requests
+    |------------------------------------------------------------------
+    */
+    Route::get('maintenance-requests', [MaintenanceController::class, 'index'])
+        ->name('maintenance-requests.index');
+
+    Route::get('maintenance-requests/create', [MaintenanceController::class, 'create'])
+        ->name('maintenance-requests.create');
+
+    Route::post('maintenance-requests', [MaintenanceController::class, 'store'])
+        ->name('maintenance-requests.store');
+
+    Route::get('maintenance-requests/{mr}', [MaintenanceController::class, 'show'])
+        ->name('maintenance-requests.show');
+
+    Route::patch('maintenance-requests/{mr}/resolve', [MaintenanceController::class, 'resolve'])
+        ->name('maintenance-requests.resolve');
+
+    Route::patch('maintenance-requests/{mr}/decommission', [MaintenanceController::class, 'decommission'])
+        ->name('maintenance-requests.decommission');
+
+    Route::patch('maintenance-requests/{mr}/return-to-service', [MaintenanceController::class, 'returnToService'])
+        ->name('maintenance-requests.return-to-service');
+
+    Route::post('maintenance-requests/{mr}/sync-orangehrm', [MaintenanceController::class, 'syncOrangehrm'])
+        ->name('maintenance-requests.sync-orangehrm');
+
+    Route::post('maintenance-requests/{mr}/disposal-certificate', [MaintenanceController::class, 'uploadDisposalCertificate'])
+        ->name('maintenance-requests.disposal-certificate');
+
 });
 
 /*

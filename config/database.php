@@ -123,6 +123,41 @@ return [
             'engine' => 'InnoDB',
         ],
 
+        // ------------------------------------------------------------
+        // NOT ACTIVE — stub only. Fill credentials in .env before use.
+        // Intended for supplier quote documents and warranty PDFs.
+        // Requires: composer require mongodb/laravel-mongodb
+        // ------------------------------------------------------------
+        'nosql_docs' => [
+            'driver'   => 'mongodb',
+            'host'     => env('MONGODB_HOST', 'localhost'),    // fill from .env
+            'port'     => (int) env('MONGODB_PORT', 27017),   // fill from .env
+            'database' => env('MONGODB_DATABASE', ''),        // fill from .env
+            'username' => env('MONGODB_USERNAME', ''),        // fill from .env
+            'password' => env('MONGODB_PASSWORD', ''),        // fill from .env
+            'options'  => [
+                'authSource' => env('MONGODB_AUTH_SOURCE', 'admin'), // fill from .env
+            ],
+        ],
+
+        // ------------------------------------------------------------
+        // NOT ACTIVE — stub only. Fill credentials in .env before use.
+        // Intended for time-series telemetry and analytics data.
+        // ------------------------------------------------------------
+        'analytics' => [
+            'driver'    => 'mysql',
+            'host'      => env('ANALYTICS_DB_HOST', 'localhost'),   // fill from .env
+            'port'      => (int) env('ANALYTICS_DB_PORT', 3306),    // fill from .env
+            'database'  => env('ANALYTICS_DB_DATABASE', ''),        // fill from .env
+            'username'  => env('ANALYTICS_DB_USERNAME', ''),        // fill from .env
+            'password'  => env('ANALYTICS_DB_PASSWORD', ''),        // fill from .env
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => false,
+            'engine'    => 'InnoDB',
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'host' => env('DB_HOST', 'localhost'),

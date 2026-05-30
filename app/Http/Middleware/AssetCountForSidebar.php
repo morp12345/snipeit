@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Asset;
+use App\Models\PurchaseRequest;
 use App\Models\Setting;
 use Closure;
 use Illuminate\Http\Request;
@@ -113,6 +114,12 @@ class AssetCountForSidebar
 
         view()->share('total_due_and_overdue_for_checkin', ($total_due_for_checkin + $total_overdue_for_checkin));
         view()->share('total_due_and_overdue_for_audit', ($total_due_for_audit + $total_overdue_for_audit));
+
+        try {
+            view()->share('pending_purchase_requests_sidebar', PurchaseRequest::where('status', 'pending')->count());
+        } catch (\Exception $e) {
+            Log::debug($e);
+        }
 
         return $next($request);
     }

@@ -1441,7 +1441,7 @@
                                                  {{ trans('general.logout') }}
                                             </a>
 
-                                            <form id="logout-form" action="{{ route('logout.post') }}" method="POST" style="display: none;">
+                                            <form id="logout-form" action="{{ config('services.orangehrm.base_url') ? route('orangehrm.logout') : route('logout.post') }}" method="POST" style="display: none;">
                                                 <button type="submit" style="display: none;" title="logout"></button>
                                                 {{ csrf_field() }}
                                             </form>
@@ -1893,6 +1893,41 @@
                             </li>
                         @endcan
 
+                        {{-- ── Procurement ──────────────────────────────────── --}}
+                        @auth
+                        <li class="treeview{{ request()->is('procurement*') ? ' active' : '' }}">
+                            <a href="#">
+                                <i class="fas fa-shopping-cart fa-fw" aria-hidden="true"></i>
+                                <span>{{ trans('general.procurement') }}</span>
+                                <span class="pull-right-container">
+                                    @if (($pending_purchase_requests_sidebar ?? 0) > 0)
+                                        <span class="label label-warning pull-right">{{ $pending_purchase_requests_sidebar }}</span>
+                                    @else
+                                        <i class="fas fa-angle-left pull-right" aria-hidden="true"></i>
+                                    @endif
+                                </span>
+                            </a>
+                            <ul class="treeview-menu">
+                                <li{{ request()->is('procurement/purchase-requests*') ? ' class="active"' : '' }}>
+                                    <a href="{{ route('purchase-requests.index') }}">
+                                        <i class="fas fa-file-alt fa-fw" aria-hidden="true"></i>
+                                        {{ trans('general.purchase_requests') }}
+                                        @if (($pending_purchase_requests_sidebar ?? 0) > 0)
+                                            <span class="pull-right-container">
+                                                <span class="label label-warning pull-right">{{ $pending_purchase_requests_sidebar }}</span>
+                                            </span>
+                                        @endif
+                                    </a>
+                                </li>
+                                <li{{ request()->is('procurement/maintenance-requests*') ? ' class="active"' : '' }}>
+                                    <a href="{{ route('maintenance-requests.index') }}">
+                                        <i class="fas fa-wrench fa-fw" aria-hidden="true"></i>
+                                        {{ trans('general.maintenance_requests') }}
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                        @endauth
 
                     </ul>
                 </section>

@@ -113,5 +113,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton('ArieTimmerman\Laravel\SCIMServer\SCIMConfig', SnipeSCIMConfig::class); // this overrides the default SCIM configuration with our own
 
+        $this->app->bind(\App\Services\SupplierScoringService::class);
+        $this->app->bind(\App\Services\BarcodeAssetReceiverService::class);
+        $this->app->bind(\App\Services\AssetAssignmentService::class);
+        $this->app->bind(\App\Services\NoSQLDocumentService::class);
+        $this->app->bind(\App\Services\OrangeHRMOffboardingService::class);
+
     }
 }

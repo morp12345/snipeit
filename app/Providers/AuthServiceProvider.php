@@ -18,6 +18,7 @@ use App\Models\Location;
 use App\Models\Maintenance;
 use App\Models\Manufacturer;
 use App\Models\PredefinedKit;
+use App\Models\PurchaseRequest;
 use App\Models\Statuslabel;
 use App\Models\Supplier;
 use App\Models\User;
@@ -37,6 +38,7 @@ use App\Policies\LocationPolicy;
 use App\Policies\MaintenancePolicy;
 use App\Policies\ManufacturerPolicy;
 use App\Policies\PredefinedKitPolicy;
+use App\Policies\PurchaseRequestPolicy;
 use App\Policies\StatuslabelPolicy;
 use App\Policies\SupplierPolicy;
 use App\Policies\UserPolicy;
@@ -72,6 +74,7 @@ class AuthServiceProvider extends ServiceProvider
         Location::class => LocationPolicy::class,
         Maintenance::class => MaintenancePolicy::class,
         PredefinedKit::class => PredefinedKitPolicy::class,
+        PurchaseRequest::class => PurchaseRequestPolicy::class,
         Statuslabel::class => StatuslabelPolicy::class,
         Supplier::class => SupplierPolicy::class,
         User::class => UserPolicy::class,

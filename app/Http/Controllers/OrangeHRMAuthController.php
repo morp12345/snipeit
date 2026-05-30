@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -84,7 +85,24 @@ class OrangeHRMAuthController extends Controller
         return redirect()->route('home');
     }
 
-    private function loginFailed(string $message = null): RedirectResponse
+    public function logout(Request $request): \Illuminate\Contracts\View\View
+    {
+        // Clear Snipe-IT session first, then return a view that uses the
+        // browser (not a server-side HTTP call) to hit OrangeHRM's logout URL.
+        // An <img> request carries the user's OrangeHRM session cookie and
+        // triggers session invalidation on the OrangeHRM side, after which
+        // JS redirects the user back to the Snipe-IT login page.
+        $request->session()->regenerate(true);
+        $request->session()->forget('2fa_authed');
+        Auth::logout();
+
+        return view('auth.orangehrm-logout', [
+            'orangehrmLogoutUrl' => rtrim(config('services.orangehrm.base_url'), '/').'/auth/logout',
+            'snipeitLoginUrl'    => route('login'),
+        ]);
+    }
+
+    private function loginFailed(?string $message = null): RedirectResponse
     {
         return redirect()->route('login')->withErrors([
             'username' => [$message ?? trans('auth/general.orangehrm_login_failed')],
