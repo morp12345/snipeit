@@ -9,8 +9,8 @@ body.login-page {
     background: #f0f4ff !important;
     padding: 0 !important;
     margin: 0 !important;
-    height: 100vh !important;
-    overflow: hidden !important;
+    min-height: 100vh !important;
+    overflow-x: hidden !important;
 }
 /* Hide logo + privacy footer injected by layouts/basic */
 body > div.text-center { display: none !important; }
@@ -18,9 +18,9 @@ body > div.text-center { display: none !important; }
 /* ── Full-page wrapper ──────────────────────────────────────────── */
 .pn-wrap {
     display: flex;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden; /* clips decorative blobs only */
 }
 
 /* ── LEFT — Brand Panel ─────────────────────────────────────────── */
@@ -130,6 +130,7 @@ body > div.text-center { display: none !important; }
     padding: 60px 52px;
     position: relative;
     overflow-y: auto;
+    min-height: 100vh;
 }
 
 /* small logo repeated on form side */
@@ -203,15 +204,58 @@ body > div.text-center { display: none !important; }
 }
 .pn-footer a { color: #a5b4fc; }
 
-/* Responsive — hide brand panel on small screens */
-@media (max-width: 900px) {
-    .pn-brand { display: none; }
-    .pn-form-panel {
-        padding: 40px 28px;
-        background: linear-gradient(180deg, #f5f3ff 0%, #fff 30%);
+/* ── Tablet (≤ 1024px): tighten the split ───────────────────────── */
+@media (max-width: 1024px) {
+    .pn-brand        { flex: 1;    padding: 48px 36px; }
+    .pn-form-panel   { flex: 1;    padding: 48px 36px; }
+    .pn-brandname    { font-size: 36px; }
+    .pn-feat         { padding: 10px 14px; }
+    .pn-features     { gap: 10px; }
+}
+
+/* ── Mobile (≤ 767px): stack vertically ─────────────────────────── */
+@media (max-width: 767px) {
+    body.login-page  { overflow-y: auto !important; }
+
+    .pn-wrap {
+        flex-direction: column;
+        overflow: visible;
+        min-height: 100vh;
     }
-    body.login-page { overflow: auto !important; height: auto !important; }
-    .pn-wrap { height: auto; min-height: 100vh; }
+
+    /* Brand panel → compact top banner */
+    .pn-brand {
+        flex: none;
+        padding: 28px 24px 24px;
+        align-items: center;
+        text-align: center;
+    }
+    .pn-logomark     { width: 64px; }
+    .pn-brandname    { font-size: 28px; letter-spacing: -1px; }
+    .pn-tagline      { margin-bottom: 0; font-size: 12px; justify-content: center; }
+    .pn-tagline-line { display: none; }
+    /* hide features on mobile to keep banner compact */
+    .pn-features     { display: none; }
+
+    /* Form panel fills the rest */
+    .pn-form-panel {
+        flex: 1;
+        min-height: auto;
+        padding: 32px 24px 40px;
+        justify-content: flex-start;
+    }
+    .pn-form-logomark { display: none; } /* logo already in top banner */
+    .pn-form-brandname, .pn-form-sub { display: none; }
+    .pn-heading  { font-size: 22px; }
+    .pn-form-sub { margin-bottom: 20px; }
+}
+
+/* ── Very small phones (≤ 380px) ────────────────────────────────── */
+@media (max-width: 380px) {
+    .pn-brand        { padding: 22px 16px 18px; }
+    .pn-form-panel   { padding: 24px 16px 32px; }
+    .pn-brandname    { font-size: 24px; }
+    .pn-sso-btn      { font-size: 14px !important; padding: 13px 16px !important; }
 }
 </style>
 
