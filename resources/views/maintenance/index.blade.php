@@ -73,7 +73,7 @@
 
                                     <td>
                                         @if ($mr->requestedBy)
-                                            {{ $mr->requestedBy->present()->fullName() }}
+                                            {{ $mr->requestedBy->present()->fullName }}
                                         @else
                                             <span class="text-muted">—</span>
                                         @endif

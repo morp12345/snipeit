@@ -59,7 +59,7 @@
                         <tr>
                             <th class="text-right">{{ trans('general.requested_by') }}</th>
                             <td>
-                                {{ $mr->requestedBy?->present()->fullName() ?? '—' }}
+                                {{ $mr->requestedBy?->present()->fullName ?? '—' }}
                             </td>
                         </tr>
 
