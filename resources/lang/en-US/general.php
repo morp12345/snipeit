@@ -219,6 +219,7 @@ return [
     'months' => 'months',
     'moreinfo' => 'More Info',
     'name' => 'Name',
+    'title' => 'Title',
     'new_password' => 'New Password',
     'next' => 'Next',
     'next_audit_date' => 'Next Audit Date',
