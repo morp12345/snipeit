@@ -40,4 +40,5 @@ return [
     'username_note' => '(This is used for Active Directory binding only, not for login.)',
     'cloneuser' => 'Clone User',
     'viewusers' => 'View Users',
+    'requesting_user' => 'Requesting User',
 ];
