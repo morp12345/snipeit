@@ -822,6 +822,10 @@ return [
     'scoring_formula_legend'              => 'Score = Price 40% (lower is better) + Lead Time 30% (lower is better) + Warranty 20% (longer is better) + Compliance 10% (bonus if notes provided).',
 
     // Supplier Quotations
+    'supplier_quotations'             => 'Supplier Quotations',
+    'no_quotations_yet'               => 'No quotations have been added yet.',
+    'more_needed'                     => 'more needed',
+    'score_suppliers'                 => 'Score Suppliers',
     'add_quotation'                   => 'Add Quotation',
     'for_po'                          => 'for PO',
     'supplier_name'                   => 'Supplier Name',
@@ -916,6 +920,7 @@ return [
     'awarded_supplier'            => 'Awarded Supplier',
     'confirm_receive_po'          => 'Confirm that all items from this purchase order have been received?',
     'back_to_po'                  => 'Back to PO',
+    'back_to_pr'                  => 'Back to PR',
     'proceed_to_assign'           => 'Assign to User',
     'assign_asset_help'           => 'Use the standard Snipe-IT checkout flow to assign this asset to the requesting user.',
 
