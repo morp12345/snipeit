@@ -820,6 +820,8 @@ return [
     'score_breakdown'                     => 'Score breakdown',
     'weight'                              => 'Weight',
     'scoring_formula_legend'              => 'Score = Price 40% (lower is better) + Lead Time 30% (lower is better) + Warranty 20% (longer is better) + Compliance 10% (bonus if notes provided).',
+    'ai_reason'                           => 'AI Recommendation',
+    'ai_unavailable'                      => 'AI unavailable',
 
     // Supplier Quotations
     'supplier_quotations'             => 'Supplier Quotations',

@@ -330,6 +330,7 @@ Suppliers:
 {$supplierList}
 
 Respond with ONLY a valid JSON array — no explanation, no markdown, no code fences.
+Each "reason" must be at least 2 complete sentences explaining why the supplier was ranked at that position.
 Format: [{"rank": 1, "supplier_name": "...", "reason": "..."}, ...]
 PROMPT;
     }

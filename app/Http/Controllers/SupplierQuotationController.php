@@ -23,7 +23,7 @@ class SupplierQuotationController extends Controller
 
     public function scoring(PurchaseOrder $po, SupplierScoringService $scorer): \Illuminate\View\View
     {
-        $ranked = $scorer->scoreAndRank($po->id);
+        $ranked = $scorer->aiEnhancedRank($po->id);
         $po->load('quotations');
 
         return view('supplier-quotations.scoring', compact('po', 'ranked'));

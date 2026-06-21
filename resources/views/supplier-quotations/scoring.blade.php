@@ -203,10 +203,17 @@
                         </table>
                     </div>{{-- /.table-responsive --}}
 
-                    {{-- Score breakdown legend --}}
+                    {{-- AI reasoning for top pick --}}
+                    @php $topEntry = collect($ranked)->firstWhere('rank', 1); @endphp
                     <div class="box-footer" style="font-size: 12px; color: #777;">
-                        <i class="fas fa-info-circle" aria-hidden="true"></i>
-                        {{ trans('general.scoring_formula_legend') }}
+                        @if (! empty($topEntry['ai_reason']))
+                            <i class="fas fa-robot text-info" aria-hidden="true"></i>
+                            <strong>{{ $topEntry['supplier_name'] }}:</strong>
+                            {{ $topEntry['ai_reason'] }}
+                        @else
+                            <i class="fas fa-info-circle" aria-hidden="true"></i>
+                            {{ trans('general.scoring_formula_legend') }}
+                        @endif
                     </div>
                 @endif
 
