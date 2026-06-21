@@ -130,16 +130,15 @@ class SupplierScoringService
     }
 
     /**
-     * AI-enhanced ranking via Claude API.
+     * AI-enhanced ranking via the configured AI provider (see config/ai.php).
      *
      * Runs the deterministic scoreAndRank() first to get base scores, then
-     * sends a structured prompt to Claude asking for a qualitative ranking
-     * with reasoning. The Claude response is merged into the base entries so
-     * the caller receives both the numeric score and the AI-generated reason.
+     * sends a structured prompt to the active provider asking for a qualitative
+     * ranking with reasoning. The AI response is merged into the base entries
+     * so the caller receives both the numeric score and the AI-generated reason.
      *
      * Falls back gracefully to the base scores if the API key is missing,
-     * the call fails, or the response cannot be parsed — so this method is
-     * always safe to call even in environments without a key configured.
+     * the call fails, or the response cannot be parsed.
      *
      * @return array<int, array{
      *     rank: int,
@@ -160,65 +159,44 @@ class SupplierScoringService
      */
     public function aiEnhancedRank(int $poId): array
     {
-        // Step 1 — get the deterministic base scores
         $baseRanked = $this->scoreAndRank($poId);
 
         if (empty($baseRanked)) {
             return [];
         }
 
-        // Attach ai_* placeholders so the return shape is always consistent
         $withPlaceholders = array_map(fn (array $entry) => array_merge($entry, [
             'ai_rank'      => null,
             'ai_reason'    => null,
             'ai_available' => false,
         ]), $baseRanked);
 
-        $apiKey = env('ANTHROPIC_API_KEY');
+        $provider = config('ai.provider', 'anthropic');
+        $cfg      = config('ai.providers.' . $provider, []);
+        $apiKey   = $cfg['api_key']  ?? null;
+        $model    = $cfg['model']    ?? null;
+        $baseUrl  = $cfg['base_url'] ?? null;
 
-        if (! $apiKey) {
-            Log::info('SupplierScoringService: ANTHROPIC_API_KEY not set — returning base scores only.');
+        // Ollama is local and needs no API key; all other providers require one
+        if ($provider !== 'ollama' && ! $apiKey) {
+            Log::info("SupplierScoringService: {$provider} API key not set — returning base scores only.");
             return $withPlaceholders;
         }
 
-        // Step 2 — build a concise prompt from the ranked quotations
         $prompt = $this->buildPrompt($baseRanked);
 
-        // Step 3 — call the Claude API
         try {
-            $client   = new HttpClient(['timeout' => 30, 'http_errors' => true]);
-            $response = $client->post('https://api.anthropic.com/v1/messages', [
-                'headers' => [
-                    'x-api-key'         => $apiKey,
-                    'anthropic-version' => '2023-06-01',
-                    'content-type'      => 'application/json',
-                ],
-                'json' => [
-                    'model'      => 'claude-haiku-4-5-20251001',
-                    'max_tokens' => 512,
-                    'messages'   => [
-                        [
-                            'role'    => 'user',
-                            'content' => $prompt,
-                        ],
-                    ],
-                ],
-            ]);
+            $text = $this->callProvider($provider, $prompt, $apiKey, $model, $baseUrl);
 
-            $body = json_decode((string) $response->getBody(), true);
-            $text = $body['content'][0]['text'] ?? '';
+            Log::info("SupplierScoringService: {$provider} response received.", ['po_id' => $poId]);
 
-            Log::info('SupplierScoringService: Claude response received.', ['po_id' => $poId]);
-
-            // Step 4 — parse the JSON array Claude returns
-            $aiRanking = $this->parseClaudeResponse($text);
+            $aiRanking = $this->parseAiResponse($text);
 
             if (empty($aiRanking)) {
-                Log::warning('SupplierScoringService: Could not parse Claude JSON — returning base scores.', ['raw' => $text]);
+                Log::warning("SupplierScoringService: Could not parse {$provider} JSON — returning base scores.", ['raw' => $text]);
                 return $withPlaceholders;
             }
 
-            // Step 5 — merge AI rank + reason into the base entries by supplier_name
             $aiByName = collect($aiRanking)->keyBy(fn ($r) => strtolower(trim($r['supplier_name'] ?? '')));
 
             return array_map(function (array $entry) use ($aiByName) {
@@ -233,15 +211,97 @@ class SupplierScoringService
             }, $baseRanked);
 
         } catch (\Throwable $e) {
-            Log::error('SupplierScoringService: Claude API call failed — '.$e->getMessage(), ['po_id' => $poId]);
+            Log::error("SupplierScoringService: {$provider} API call failed — " . $e->getMessage(), ['po_id' => $poId]);
             return $withPlaceholders;
         }
     }
 
     /**
-     * Build the prompt string sent to Claude.
-     * Returns a compact, unambiguous description of the quotations
-     * and a strict JSON-only instruction so parsing is reliable.
+     * Dispatch to the correct provider's API based on the provider name.
+     */
+    private function callProvider(string $provider, string $prompt, ?string $apiKey, ?string $model, ?string $baseUrl): string
+    {
+        return match ($provider) {
+            'anthropic' => $this->callAnthropic($prompt, $apiKey, $model, $baseUrl),
+            'openai'    => $this->callOpenAi($prompt, $apiKey, $model, $baseUrl),
+            'gemini'    => $this->callGemini($prompt, $apiKey, $model, $baseUrl),
+            'ollama'    => $this->callOllama($prompt, $model, $baseUrl),
+            default     => throw new \InvalidArgumentException("Unsupported AI provider: {$provider}"),
+        };
+    }
+
+    private function callAnthropic(string $prompt, string $apiKey, string $model, string $baseUrl): string
+    {
+        $client   = new HttpClient(['timeout' => 30, 'http_errors' => true]);
+        $response = $client->post(rtrim($baseUrl, '/') . '/messages', [
+            'headers' => [
+                'x-api-key'         => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type'      => 'application/json',
+            ],
+            'json' => [
+                'model'      => $model,
+                'max_tokens' => 512,
+                'messages'   => [['role' => 'user', 'content' => $prompt]],
+            ],
+        ]);
+
+        $body = json_decode((string) $response->getBody(), true);
+        return $body['content'][0]['text'] ?? '';
+    }
+
+    private function callOpenAi(string $prompt, string $apiKey, string $model, string $baseUrl): string
+    {
+        $client   = new HttpClient(['timeout' => 30, 'http_errors' => true]);
+        $response = $client->post(rtrim($baseUrl, '/') . '/chat/completions', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'content-type'  => 'application/json',
+            ],
+            'json' => [
+                'model'      => $model,
+                'max_tokens' => 512,
+                'messages'   => [['role' => 'user', 'content' => $prompt]],
+            ],
+        ]);
+
+        $body = json_decode((string) $response->getBody(), true);
+        return $body['choices'][0]['message']['content'] ?? '';
+    }
+
+    private function callGemini(string $prompt, string $apiKey, string $model, string $baseUrl): string
+    {
+        $client   = new HttpClient(['timeout' => 30, 'http_errors' => true]);
+        $url      = rtrim($baseUrl, '/') . '/models/' . $model . ':generateContent?key=' . $apiKey;
+        $response = $client->post($url, [
+            'headers' => ['content-type' => 'application/json'],
+            'json'    => [
+                'contents' => [['parts' => [['text' => $prompt]]]],
+            ],
+        ]);
+
+        $body = json_decode((string) $response->getBody(), true);
+        return $body['candidates'][0]['content']['parts'][0]['text'] ?? '';
+    }
+
+    private function callOllama(string $prompt, string $model, string $baseUrl): string
+    {
+        $client   = new HttpClient(['timeout' => 60, 'http_errors' => true]);
+        $response = $client->post(rtrim($baseUrl, '/') . '/api/chat', [
+            'headers' => ['content-type' => 'application/json'],
+            'json'    => [
+                'model'    => $model,
+                'stream'   => false,
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+            ],
+        ]);
+
+        $body = json_decode((string) $response->getBody(), true);
+        return $body['message']['content'] ?? '';
+    }
+
+    /**
+     * Build the prompt string sent to the AI provider.
      */
     private function buildPrompt(array $ranked): string
     {
@@ -275,11 +335,10 @@ PROMPT;
     }
 
     /**
-     * Extract the JSON array from Claude's text response.
-     * Handles cases where the model wraps the JSON in markdown fences
-     * despite being instructed not to.
+     * Extract the JSON array from the AI response text.
+     * Handles cases where the model wraps the JSON in markdown fences.
      */
-    private function parseClaudeResponse(string $text): array
+    private function parseAiResponse(string $text): array
     {
         $text = trim($text);
 
