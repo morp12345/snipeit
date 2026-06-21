@@ -336,6 +336,212 @@ PROMPT;
     }
 
     /**
+     * Hybrid anomaly detection for a PO's quotations.
+     *
+     * Step 1 — statistical: flags each quotation using z-scores and heuristics.
+     * Step 2 — AI: sends flagged entries + statistical context to the active
+     *              provider for a 2-sentence procurement-risk explanation.
+     *
+     * Flags checked:
+     *   price_too_low        — price z-score < -1.5 (bid dumping risk)
+     *   price_too_high       — price z-score >  1.5
+     *   price_collusion      — price within 2% of another quotation
+     *   lead_time_suspicious — lead time z-score < -1.5 (unrealistically fast)
+     *   warranty_mismatch    — low price z (<-1.0) paired with high warranty z (>1.0)
+     *
+     * Returns an empty array when fewer than 2 quotations exist or none are flagged.
+     *
+     * @return array<int, array{
+     *     supplier_name: string,
+     *     supplier_email: string|null,
+     *     flags: string[],
+     *     stat_details: string[],
+     *     ai_explanation: string|null,
+     * }>
+     */
+    public function detectAnomalies(int $poId): array
+    {
+        $quotations = SupplierQuotation::where('purchase_order_id', $poId)->get();
+
+        if ($quotations->count() < 2) {
+            return [];
+        }
+
+        $prices     = $quotations->pluck('price')->map(fn ($v) => (float) $v);
+        $leadTimes  = $quotations->pluck('lead_time_days')->filter()->map(fn ($v) => (int) $v);
+        $warranties = $quotations->pluck('warranty_months')->filter()->map(fn ($v) => (int) $v);
+
+        $priceMean = $prices->average();
+        $priceStd  = $this->stdDev($prices->values()->all());
+        $leadMean  = $leadTimes->isNotEmpty()  ? $leadTimes->average()  : null;
+        $leadStd   = $leadTimes->isNotEmpty()  ? $this->stdDev($leadTimes->values()->all())  : 0.0;
+        $warMean   = $warranties->isNotEmpty() ? $warranties->average() : null;
+        $warStd    = $warranties->isNotEmpty() ? $this->stdDev($warranties->values()->all()) : 0.0;
+
+        // Pre-compute which quotation IDs are in a collusion cluster (price within 2% of another)
+        $collusionIds = [];
+        $qList = $quotations->values()->all();
+        for ($i = 0; $i < count($qList); $i++) {
+            for ($j = $i + 1; $j < count($qList); $j++) {
+                $pi = (float) $qList[$i]->price;
+                $pj = (float) $qList[$j]->price;
+                if ($pi > 0 && abs($pi - $pj) / $pi < 0.02) {
+                    $collusionIds[$qList[$i]->id] = true;
+                    $collusionIds[$qList[$j]->id] = true;
+                }
+            }
+        }
+
+        $flagged = [];
+
+        foreach ($quotations as $q) {
+            $price   = (float) $q->price;
+            $flags   = [];
+            $details = [];
+
+            $priceZ   = ($priceStd > 0) ? ($price - $priceMean) / $priceStd : 0.0;
+            $pricePct = ($priceMean > 0) ? (($price - $priceMean) / $priceMean) * 100 : 0.0;
+
+            if ($priceZ < -1.5) {
+                $flags[]   = 'price_too_low';
+                $details[] = sprintf('Price is %.1f%% below average (z=%.2f).', abs($pricePct), $priceZ);
+            }
+
+            if ($priceZ > 1.5) {
+                $flags[]   = 'price_too_high';
+                $details[] = sprintf('Price is %.1f%% above average (z=%.2f).', $pricePct, $priceZ);
+            }
+
+            if (isset($collusionIds[$q->id])) {
+                $flags[]   = 'price_collusion';
+                $details[] = 'Price is within 2% of another quotation — possible bid coordination.';
+            }
+
+            if ($q->lead_time_days && $leadMean && $leadStd > 0) {
+                $leadZ = ($q->lead_time_days - $leadMean) / $leadStd;
+                if ($leadZ < -1.5) {
+                    $flags[]   = 'lead_time_suspicious';
+                    $details[] = sprintf('Lead time of %d days is unusually short for this group (z=%.2f).', $q->lead_time_days, $leadZ);
+                }
+            }
+
+            if ($q->warranty_months && $warMean && $warStd > 0) {
+                $warZ = ($q->warranty_months - $warMean) / $warStd;
+                if ($priceZ < -1.0 && $warZ > 1.0) {
+                    $flags[]   = 'warranty_mismatch';
+                    $details[] = sprintf('Unusually low price paired with high warranty (%d months) — possible quality risk.', $q->warranty_months);
+                }
+            }
+
+            if (! empty($flags)) {
+                $flagged[] = [
+                    'supplier_name'  => $q->supplier_name,
+                    'supplier_email' => $q->supplier_email,
+                    'flags'          => $flags,
+                    'stat_details'   => $details,
+                    'ai_explanation' => null,
+                ];
+            }
+        }
+
+        if (empty($flagged)) {
+            return [];
+        }
+
+        // Step 2 — AI explanation for each flagged supplier
+        $provider = config('ai.provider', 'anthropic');
+        $cfg      = config('ai.providers.' . $provider, []);
+        $apiKey   = $cfg['api_key']  ?? null;
+        $model    = $cfg['model']    ?? null;
+        $baseUrl  = $cfg['base_url'] ?? null;
+
+        if ($provider !== 'ollama' && ! $apiKey) {
+            return $flagged;
+        }
+
+        try {
+            $prompt = $this->buildAnomalyPrompt($flagged);
+            $text   = $this->callProvider($provider, $prompt, $apiKey, $model, $baseUrl);
+
+            Log::info('SupplierScoringService: anomaly AI response received.', ['po_id' => $poId]);
+
+            $aiResults = $this->parseAnomalyResponse($text);
+            $aiByName  = collect($aiResults)->keyBy(fn ($r) => strtolower(trim($r['supplier_name'] ?? '')));
+
+            return array_map(function (array $entry) use ($aiByName) {
+                $key   = strtolower(trim($entry['supplier_name']));
+                $aiRow = $aiByName->get($key);
+                $entry['ai_explanation'] = $aiRow['explanation'] ?? null;
+                return $entry;
+            }, $flagged);
+
+        } catch (\Throwable $e) {
+            Log::error('SupplierScoringService: anomaly AI call failed — ' . $e->getMessage(), ['po_id' => $poId]);
+            return $flagged;
+        }
+    }
+
+    private function buildAnomalyPrompt(array $flagged): string
+    {
+        $lines = [];
+        foreach ($flagged as $entry) {
+            $lines[] = sprintf(
+                '- %s: %s',
+                $entry['supplier_name'],
+                implode(' ', $entry['stat_details'])
+            );
+        }
+
+        $list = implode("\n", $lines);
+
+        return <<<PROMPT
+You are a procurement fraud analyst. The following suppliers have been flagged by statistical analysis for suspicious bidding patterns.
+
+Flagged suppliers:
+{$list}
+
+For each flagged supplier, write exactly 2 sentences explaining the specific procurement risk in plain business language.
+
+Respond with ONLY a valid JSON array — no explanation, no markdown, no code fences.
+Format: [{"supplier_name": "...", "explanation": "..."}, ...]
+PROMPT;
+    }
+
+    private function parseAnomalyResponse(string $text): array
+    {
+        $text = trim($text);
+        $text = preg_replace('/^```(?:json)?\s*/i', '', $text);
+        $text = preg_replace('/\s*```$/', '', $text);
+        $text = trim($text);
+
+        $start = strpos($text, '[');
+        $end   = strrpos($text, ']');
+
+        if ($start === false || $end === false || $end <= $start) {
+            return [];
+        }
+
+        $parsed = json_decode(substr($text, $start, $end - $start + 1), true);
+
+        if (! is_array($parsed)) {
+            return [];
+        }
+
+        return array_filter($parsed, fn ($r) => isset($r['supplier_name'], $r['explanation']));
+    }
+
+    private function stdDev(array $values): float
+    {
+        $n = count($values);
+        if ($n < 2) {
+            return 0.0;
+        }
+        $mean     = array_sum($values) / $n;
+        $variance = array_sum(array_map(fn ($v) => ($v - $mean) ** 2, $values)) / ($n - 1);
+        return sqrt($variance);
+    }
+
+    /**
      * Extract the JSON array from the AI response text.
      * Handles cases where the model wraps the JSON in markdown fences.
      */

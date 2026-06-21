@@ -822,6 +822,13 @@ return [
     'scoring_formula_legend'              => 'Score = Price 40% (lower is better) + Lead Time 30% (lower is better) + Warranty 20% (longer is better) + Compliance 10% (bonus if notes provided).',
     'ai_reason'                           => 'AI Recommendation',
     'ai_unavailable'                      => 'AI unavailable',
+    'anomaly_detection'                   => 'Anomaly Detection',
+    'no_anomalies_detected'               => 'No anomalies detected. All bidding patterns appear normal.',
+    'anomaly_flag_price_too_low'          => 'Abnormally Low Price',
+    'anomaly_flag_price_too_high'         => 'Abnormally High Price',
+    'anomaly_flag_price_collusion'        => 'Possible Collusion',
+    'anomaly_flag_lead_time_suspicious'   => 'Suspicious Lead Time',
+    'anomaly_flag_warranty_mismatch'      => 'Price-Warranty Mismatch',
 
     // Supplier Quotations
     'supplier_quotations'             => 'Supplier Quotations',

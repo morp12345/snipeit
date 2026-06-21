@@ -38,6 +38,48 @@
             </div>
         @endif
 
+        {{-- ── Anomaly Detection ───────────────────────────────────────────── --}}
+        <div class="box {{ empty($anomalies) ? 'box-success' : 'box-warning' }}">
+            <div class="box-header with-border">
+                <h3 class="box-title">
+                    <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+                    {{ trans('general.anomaly_detection') }}
+                </h3>
+            </div>
+            <div class="box-body" style="padding-bottom: 5px;">
+                @if (empty($anomalies))
+                    <div class="callout callout-success" style="margin-bottom: 10px;">
+                        <i class="fas fa-check-circle" aria-hidden="true"></i>
+                        {{ trans('general.no_anomalies_detected') }}
+                    </div>
+                @else
+                    @foreach ($anomalies as $anomaly)
+                    <div class="callout callout-warning" style="margin-bottom: 10px;">
+                        <h4 style="margin-top: 0;">
+                            {{ $anomaly['supplier_name'] }}
+                            @foreach ($anomaly['flags'] as $flag)
+                                <span class="label label-warning" style="font-size: 11px; margin-left: 4px;">
+                                    {{ trans('general.anomaly_flag_' . $flag) }}
+                                </span>
+                            @endforeach
+                        </h4>
+                        <ul style="margin: 4px 0 6px 16px; padding: 0;">
+                            @foreach ($anomaly['stat_details'] as $detail)
+                                <li><small>{{ $detail }}</small></li>
+                            @endforeach
+                        </ul>
+                        @if (! empty($anomaly['ai_explanation']))
+                            <p style="margin: 6px 0 0; font-size: 12px;">
+                                <i class="fas fa-robot text-info" aria-hidden="true"></i>
+                                <em>{{ $anomaly['ai_explanation'] }}</em>
+                            </p>
+                        @endif
+                    </div>
+                    @endforeach
+                @endif
+            </div>
+        </div>
+
         <div class="box box-default">
 
             <div class="box-header with-border">
