@@ -365,7 +365,56 @@ body > div.text-center { display: none !important; }
             {{ trans('auth/general.orangehrm_login') }}
         </a>
 
-        <div class="pn-divider">Secure Single Sign-On</div>
+        <div class="pn-divider">or sign in with your account</div>
+
+        {{-- Local username / password form --}}
+        <form method="POST" action="{{ route('login') }}" autocomplete="on">
+            {!! csrf_field() !!}
+
+            <div class="form-group" style="margin-bottom:16px;">
+                <label for="username" style="font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; display:block;">
+                    {{ trans('general.username') }}
+                </label>
+                <input type="text"
+                       id="username"
+                       name="username"
+                       value="{{ old('username') }}"
+                       autocomplete="username"
+                       required
+                       style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:14px; color:#111827; outline:none; transition:border-color .15s; box-sizing:border-box;"
+                       onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#e5e7eb'">
+            </div>
+
+            <div class="form-group" style="margin-bottom:10px;">
+                <label for="password" style="font-size:13px; font-weight:600; color:#374151; margin-bottom:6px; display:block;">
+                    {{ trans('general.password') }}
+                </label>
+                <input type="password"
+                       id="password"
+                       name="password"
+                       autocomplete="current-password"
+                       required
+                       style="width:100%; padding:11px 14px; border:1.5px solid #e5e7eb; border-radius:8px; font-size:14px; color:#111827; outline:none; transition:border-color .15s; box-sizing:border-box;"
+                       onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#e5e7eb'">
+            </div>
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                <label style="display:flex; align-items:center; gap:6px; font-size:13px; color:#6b7280; cursor:pointer; margin:0;">
+                    <input type="checkbox" name="remember" value="1" style="accent-color:#7c3aed;">
+                    {{ trans('auth/general.remember_me') }}
+                </label>
+                <a href="{{ route('password.email') }}" style="font-size:13px; color:#7c3aed; text-decoration:none;">
+                    {{ trans('auth/general.forgot_password') }}
+                </a>
+            </div>
+
+            <button type="submit"
+                    style="width:100%; padding:13px 24px; background:linear-gradient(135deg,#4f46e5,#7c3aed); border:none; border-radius:10px; font-size:15px; font-weight:700; color:#fff; cursor:pointer; letter-spacing:.3px; box-shadow:0 4px 18px rgba(79,70,229,.38); transition:transform .15s,box-shadow .15s;"
+                    onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 8px 24px rgba(79,70,229,.48)'"
+                    onmouseout="this.style.transform='';this.style.boxShadow='0 4px 18px rgba(79,70,229,.38)'">
+                {{ trans('auth/general.login') }}
+            </button>
+        </form>
 
         <div class="pn-footer">
             <i class="fas fa-lock" style="color:#d1d5db; margin-right:5px;" aria-hidden="true"></i>
