@@ -12,8 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('supplier_quotations', function (Blueprint $table) {
-            // Column was partially created as bigint in a failed run — retype it to match suppliers.id (int unsigned)
-            $table->unsignedInteger('supplier_id')->nullable()->change();
+            if (Schema::hasColumn('supplier_quotations', 'supplier_id')) {
+                $table->unsignedInteger('supplier_id')->nullable()->change();
+            } else {
+                $table->unsignedInteger('supplier_id')->nullable();
+            }
             $table->foreign('supplier_id')->references('id')->on('suppliers')->nullOnDelete();
         });
     }
