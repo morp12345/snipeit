@@ -20,9 +20,7 @@ class UserSeeder extends Seeder
      */
     public function run()
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
         User::truncate();
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         if (! Company::count()) {
             $this->call(CompanySeeder::class);

@@ -20,6 +20,8 @@ class DatabaseSeeder extends Seeder
     {
         Model::unguard();
 
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+
         // Only create default settings if they do not exist in the db.
         if (! Setting::first()) {
             // factory(Setting::class)->create();
@@ -49,6 +51,8 @@ class DatabaseSeeder extends Seeder
         Artisan::call('snipeit:sync-asset-locations', ['--output' => 'all']);
         $output = Artisan::output();
         Log::info($output);
+
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         Model::reguard();
 
